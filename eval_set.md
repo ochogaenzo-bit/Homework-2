@@ -6,4 +6,4 @@ Normal Case: Customer asks to place an order on the phone. (A good output would 
 
 Edge Case: Customer asks about missing items in their order. (While the Agent would likely be able to identify this issue a human would have to give information about the missing items in the customers order and issue a reasonable refund to the customer themsleves, in order for the AI agent to not mess it up)
 
-Fail Case: Customer asks about missing orderand how the order was delayed twice for the past two days. (Very complicated complaint that the AI agent would be nlikely to answer without full human 
+Fail Case: Customer asks about missing order and how the order's delivery was delayed twice for the past two days. (Very complicated complaint that the AI agent would not be able to answer without full human input and monitering or the customer's account and discrepancies)
