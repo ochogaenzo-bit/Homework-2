@@ -1,87 +1,80 @@
 import os
 import argparse
-import json
-from datetime import datetime
-from openai import OpenAI
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-# --- CONFIGURATION ---
-# This system instruction is configurable. 
-# You can change the tone or specific business rules here.
-DEFAULT_SYSTEM_INSTRUCTION = """
-You are an expert Customer Support Specialist. 
-Your task is to analyze a customer's message and provide:
-1. Sentiment Analysis (Positive, Neutral, or Negative)
-2. Summary of the Issue
-3. A Drafted Response that is empathetic, professional, and provides a clear solution.
-
-Guidelines:
-- If the customer is angry, acknowledge their frustration immediately.
-- If a technical solution isn't clear, ask clarifying questions or offer a follow-up.
-- Keep the tone helpful and concise.
-"""
-
-def generate_support_response(api_key, customer_input, system_instruction):
-    client = OpenAI(api_key=api_key)
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o", # or "gpt-3.5-turbo"
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": f"Customer Message: {customer_input}"}
-            ],
-            temperature=0.7
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error calling API: {str(e)}"
-
-def save_output(content, customer_id="support_draft"):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{customer_id}_{timestamp}.txt"
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(content)
-    return filename
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Customer Support Draft Tool")
+    """
+    Main function to handle CLI arguments and generate customer support responses.
+    """
+    parser = argparse.ArgumentParser(description="Draft Customer Support Responses using Gemini AI")
+    parser.add_argument("--complaint", type=str, help="The customer complaint or feedback text")
+    parser.add_argument("--config", type=str, default="system_instruction.txt", help="Path to the system instruction configuration file")
+    parser.add_argument("--output", type=str, default="response.txt", help="Path to save the generated response")
     
-    # Arguments
-    parser.add_argument("--input", type=str, help="The customer complaint or feedback text")
-    parser.add_argument("--key", type=str, help="Your OpenAI API Key")
-    parser.add_argument("--instruction", type=str, default=DEFAULT_SYSTEM_INSTRUCTION, 
-                        help="Optional: Override the default system instruction")
-    parser.add_argument("--file", action="store_true", help="Save the output to a text file")
-
     args = parser.parse_args()
-
-    # Handle missing API key
-    api_key = args.key or os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        print("Error: API Key is required. Provide it via --key or set OPENAI_API_KEY env var.")
-        return
-
-    # Handle missing input (Interactive mode)
-    customer_text = args.input
-    if not customer_text:
-        print("--- Drafting Customer Support Responses ---")
-        customer_text = input("Please enter the customer's message: ")
-
-    print("\n[Processing Draft...]\n")
     
-    result = generate_support_response(api_key, customer_text, args.instruction)
+    # Interactive mode if no complaint is provided via CLI
+    complaint = args.complaint
+    if not complaint:
+        print("Welcome to the Customer Support Response Drafter!")
+        complaint = input("Please enter the customer's complaint or feedback: ")
+        if not complaint.strip():
+            print("Error: Complaint cannot be empty.")
+            return
 
-    # Structured Output to Console
-    print("="*30)
-    print("AI-GENERATED SUPPORT DRAFT")
-    print("="*30)
-    print(result)
-    print("="*30)
+    # Configure Gemini API
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("Error: GEMINI_API_KEY not found. Please set it in your environment or .env file.")
+        return
+    
+    genai.configure(api_key=api_key)
+    
+    # Load system instruction from file
+    try:
+        with open(args.config, "r") as f:
+            system_instruction = f.read().strip()
+    except FileNotFoundError:
+        system_instruction = (
+            "You are a world-class customer support specialist. "
+            "Your goal is to provide empathetic, professional, and solution-oriented responses "
+            "to customer complaints. Always acknowledge their frustration, apologize sincerely, "
+            "and offer a concrete next step or solution."
+        )
+        print(f"Note: Config file '{args.config}' not found. Using default system instructions.")
 
-    # Save to File
-    if args.file:
-        saved_file = save_output(result)
-        print(f"\nDraft saved successfully to: {saved_file}")
+    # Initialize the model (using 1.5 Flash for speed)
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=system_instruction
+    )
+    
+    print("\n" + "="*50)
+    print("STRATEGY: Analyzing complaint and drafting response...")
+    print("="*50)
+    
+    try:
+        # Generate the response
+        response = model.generate_content(complaint)
+        response_text = response.text
+        
+        # Structured Output
+        print("\n[DRAFTED RESPONSE]")
+        print("-" * 20)
+        print(response_text)
+        print("-" * 20)
+        
+        # Save to file
+        with open(args.output, "w") as f:
+            f.write(response_text)
+        print(f"\nSUCCESS: Response saved to '{args.output}'")
+        
+    except Exception as e:
+        print(f"\nERROR: Failed to generate response. {str(e)}")
 
 if __name__ == "__main__":
     main()
