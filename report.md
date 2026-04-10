@@ -1,1 +1,6 @@
+Business use case: Customer Support
+Model I chose: "drafting customer support responses" as I relate to this workflow the most due to asking questions and complaints about certain shippers I purchase from.
+Baseline vs. Final design: The baseline was good for simpler questions but started to brak and not give good responses for more complex ones. After redoing the prompt, it had given me better and more detailed responses and directives.
+Where the prompt Fails and needs human review: The prompt fails with solving issues with missing items or damaged delivery items by its own, as it goes into a loop that doesn't solve anything for the customer. Realistically, the agent would have to either transfer the customer to human support for the issue to be resolved. If the AI were to handle this issue on its own, it'd need more fine-tuning and lots of testing on its capalitities regarding this subject, which could cause some problems with the effectiveness of other components in the agent's code.
+What I would reccommend: I would reccommed the AI agent being a mediator which solves simpler problems customers have and questions by directing them to the company's resources and giving the agent a tool to transer customers to human support when needed if the feedback the customer gives to the agent is too complex for it to handle.
 
