@@ -8,3 +8,5 @@ After the complaints reaches the agent, the output that shouldbe produced would 
 
 This task is valuable enough to automate because it alleviates the stress of a team constantly having to talk with customers over issues that might take a large amount of time to resolve depending on the issue, the agent can 
 easily locate the problem and a appropiate solution for any customer.
+
+Video Link: https://youtu.be/gnateWpoSOI
