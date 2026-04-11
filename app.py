@@ -1,80 +1,73 @@
 import os
 import argparse
+import json
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# Load environment variables from .env file if it exists
+# Load environment variables
 load_dotenv()
 
 def main():
-    """
-    Main function to handle CLI arguments and generate customer support responses.
-    """
-    parser = argparse.ArgumentParser(description="Draft Customer Support Responses using Gemini AI")
-    parser.add_argument("--complaint", type=str, help="The customer complaint or feedback text")
-    parser.add_argument("--config", type=str, default="system_instruction.txt", help="Path to the system instruction configuration file")
-    parser.add_argument("--output", type=str, default="response.txt", help="Path to save the generated response")
+    parser = argparse.ArgumentParser(description="Draft Customer Support Responses with Variations")
+    parser.add_argument("--complaint", type=str, help="The customer complaint text")
+    parser.add_argument("--config", type=str, default="system_instruction.txt")
+    parser.add_argument("--output", type=str, default="response_variations.json")
+    parser.add_argument("--variations", type=int, default=3)
     
     args = parser.parse_args()
     
-    # Interactive mode if no complaint is provided via CLI
+    # Interactive mode
     complaint = args.complaint
     if not complaint:
-        print("Welcome to the Customer Support Response Drafter!")
-        complaint = input("Please enter the customer's complaint or feedback: ")
-        if not complaint.strip():
-            print("Error: Complaint cannot be empty.")
-            return
+        print("\n[ CUSTOMER SUPPORT RESPONSE DRAFTER ]")
+        complaint = input("Enter customer complaint: ")
 
-    # Configure Gemini API
     api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found. Please set it in your environment or .env file.")
-        return
-    
     genai.configure(api_key=api_key)
     
-    # Load system instruction from file
-    try:
-        with open(args.config, "r") as f:
-            system_instruction = f.read().strip()
-    except FileNotFoundError:
-        system_instruction = (
-            "You are a world-class customer support specialist. "
-            "Your goal is to provide empathetic, professional, and solution-oriented responses "
-            "to customer complaints. Always acknowledge their frustration, apologize sincerely, "
-            "and offer a concrete next step or solution."
-        )
-        print(f"Note: Config file '{args.config}' not found. Using default system instructions.")
+    with open(args.config, "r") as f:
+        system_instruction = f.read().strip()
 
-    # Initialize the model (using 1.5 Flash for speed)
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         system_instruction=system_instruction
     )
     
-    print("\n" + "="*50)
-    print("STRATEGY: Analyzing complaint and drafting response...")
-    print("="*50)
+    # Prompt for structured variations
+    prompt = f"""
+    Analyze the following customer complaint and generate {args.variations} different response variations.
+    CUSTOMER COMPLAINT: "{complaint}"
+    
+    Output JSON format:
+    {{
+      "category": "Category Name",
+      "variations": [
+        {{ "type": "Direct/Professional", "content": "..." }},
+        {{ "type": "Empathetic/Warm", "content": "..." }},
+        {{ "type": "Concise/Quick", "content": "..." }}
+      ]
+    }}
+    """
     
     try:
-        # Generate the response
-        response = model.generate_content(complaint)
-        response_text = response.text
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
+        )
+        data = json.loads(response.text)
         
-        # Structured Output
-        print("\n[DRAFTED RESPONSE]")
-        print("-" * 20)
-        print(response_text)
-        print("-" * 20)
-        
+        # Print to console
+        print(f"\n[ CATEGORY: {data.get('category')} ]")
+        for i, var in enumerate(data.get('variations', []), 1):
+            print(f"\n--- VARIATION {i}: {var.get('type')} ---\n{var.get('content')}")
+            
         # Save to file
         with open(args.output, "w") as f:
-            f.write(response_text)
-        print(f"\nSUCCESS: Response saved to '{args.output}'")
+            json.dump(data, f, indent=2)
+        print(f"\nSUCCESS: Variations saved to '{args.output}'")
         
     except Exception as e:
-        print(f"\nERROR: Failed to generate response. {str(e)}")
+        print(f"\nERROR: {str(e)}")
 
 if __name__ == "__main__":
     main()
